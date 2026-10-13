@@ -1,0 +1,30 @@
+# Tau ERP — production Caddyfile (reverse proxy with automatic HTTPS)
+# Installed by deploy.sh to /etc/caddy/Caddyfile with __DOMAIN__ replaced.
+#
+# Caddy automatically:
+#   - obtains Let's Encrypt certificates (needs DNS pointing at this server)
+#   - renews them before expiry
+#   - redirects all HTTP → HTTPS
+
+__DOMAIN__ {
+	encode gzip
+
+	# Long-cache immutable Next.js build assets
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

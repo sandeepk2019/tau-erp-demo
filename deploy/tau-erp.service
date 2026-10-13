@@ -1,0 +1,40 @@
+# Tau ERP — systemd service unit
+# Installed by deploy.sh to /etc/systemd/system/tau-erp.service
+# Paths are templated via __INSTALL_DIR__
+
+[Unit]
+Description=Tau ERP (Next.js standalone)
+Documentation=https://nextjs.org/docs
+After=network.target
+
+[Service]
+Type=simple
+User=tau
+Group=tau
+WorkingDirectory=__INSTALL_DIR__
+EnvironmentFile=__INSTALL_DIR__/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+Environment=TZ=Asia/Kolkata
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/local/bin/bun __INSTALL_DIR__/.next/standalone/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tau-erp
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=__INSTALL_DIR__/db __INSTALL_DIR__/logs
+
+# Graceful shutdown
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Tau ERP industrial dark theme — Tau Power brand palette (tau-power colour scheme):
+   primary green #93cb73 · info blue #6ec1e4 · danger #d6373f/#b40000 · dark #23282d/#414141 · grey #b2b2b2
+   Dark-only HMI style; amber utilities remain for warning semantics. */
+:root {
+  --radius: 0.55rem;
+  --background: #1a1e22;
+  --foreground: #f2f2f3;
+  --card: #20252a;
+  --card-foreground: #f2f2f3;
+  --popover: #23282d;
+  --popover-foreground: #f2f2f3;
+  --primary: #93cb73;
+  --primary-foreground: #161b14;
+  --secondary: #2b3136;
+  --secondary-foreground: #ededed;
+  --muted: #262b30;
+  --muted-foreground: #b2b2b2;
+  --accent: #26301f;
+  --accent-foreground: #cfe8bd;
+  --destructive: #d6373f;
+  --border: #3a4046;
+  --input: #31373d;
+  --ring: #93cb73;
+  --chart-1: #93cb73;
+  --chart-2: #6ec1e4;
+  --chart-3: #d6373f;
+  --chart-4: #ebdccb;
+  --chart-5: #b2b2b2;
+  --sidebar: #171b1f;
+  --sidebar-foreground: #ececec;
+  --sidebar-primary: #93cb73;
+  --sidebar-primary-foreground: #161b14;
+  --sidebar-accent: #23282d;
+  --sidebar-accent-foreground: #f2f2f3;
+  --sidebar-border: #2c3238;
+  --sidebar-ring: #93cb73;
+}
+
+.dark {
+  --radius: 0.55rem;
+  --background: #1a1e22;
+  --foreground: #f2f2f3;
+  --card: #20252a;
+  --card-foreground: #f2f2f3;
+  --popover: #23282d;
+  --popover-foreground: #f2f2f3;
+  --primary: #93cb73;
+  --primary-foreground: #161b14;
+  --secondary: #2b3136;
+  --secondary-foreground: #ededed;
+  --muted: #262b30;
+  --muted-foreground: #b2b2b2;
+  --accent: #26301f;
+  --accent-foreground: #cfe8bd;
+  --destructive: #d6373f;
+  --border: #3a4046;
+  --input: #31373d;
+  --ring: #93cb73;
+  --chart-1: #93cb73;
+  --chart-2: #6ec1e4;
+  --chart-3: #d6373f;
+  --chart-4: #ebdccb;
+  --chart-5: #b2b2b2;
+  --sidebar: #171b1f;
+  --sidebar-foreground: #ececec;
+  --sidebar-primary: #93cb73;
+  --sidebar-primary-foreground: #161b14;
+  --sidebar-accent: #23282d;
+  --sidebar-accent-foreground: #f2f2f3;
+  --sidebar-border: #2c3238;
+  --sidebar-ring: #93cb73;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  /* prevent PRISMA query log noise in dev overlay */
+  /* Dialog track guard: shadcn DialogContent is a CSS grid with an implicit auto
+     column — a wide child (e.g. a table's min-content) would blow the track past
+     the dialog box and clip text at the viewport edge. Pin the track to 1fr with
+     min 0 so every dialog lays out inside its own width; inner scroll areas
+     (.overflow-x-auto) handle genuinely wide content. */
+  [data-slot="dialog-content"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ------- Tau ERP utility classes ------- */
+.erp-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #414141 transparent;
+}
+.erp-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.erp-scroll::-webkit-scrollbar-thumb {
+  background: #414141;
+  border-radius: 8px;
+}
+.erp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.erp-grid-bg {
+  background-image:
+    linear-gradient(#93cb7312 1px, transparent 1px),
+    linear-gradient(90deg, #93cb7312 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.watermark {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 10px,
+    #93cb730b 10px,
+    #93cb730b 20px
+  );
+}
+
+/* ------- Tau ERP controlled print documents (spec §Printing) ------- */
+@media print {
+  body * { visibility: hidden !important; }
+  #tau-print-root, #tau-print-root * { visibility: visible !important; }
+  #tau-print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 24px !important;
+  }
+  #tau-print-root .no-print { display: none !important; }
+  @page { size: A4; margin: 12mm; }
+}
+
+/* ------- Tau ERP keyboard accessibility: consistent focus ring ------- */
+@layer base {
+  :focus-visible {
+    outline: 2px solid #93cb73e6;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Tau green text selection (brand palette) */
+  ::selection {
+    background: #93cb7347;
+    color: inherit;
+  }
+}
+
+/* ------- Skeleton shimmer (round-8) — sweeping highlight, honours reduced motion ------- */
+@keyframes erp-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.erp-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    #2b31368c 35%,
+    #3a4046bf 50%,
+    #2b31368c 65%
+  );
+  background-size: 200% 100%;
+  animation: erp-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Respect users who prefer reduced motion: kill decorative transitions */
+@media (prefers-reduced-motion: reduce) {
+  .erp-scroll,
+  table tr,
+  .tabular,
+  .erp-shimmer {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -1,0 +1,813 @@
+// ============================================================================
+// Tau ERP — Domain Schema (frozen)
+// Faithful port of tau-erpnext-mega-prompt.md DocType catalogue to Prisma/SQLite.
+// Rules: SQLite → no enums (String + constants), no list primitives (Json-encoded String).
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// ORGANIZATION, RBAC, GOVERNANCE
+// ----------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique // e.g. "r.sharma"
+  email        String   @unique
+  name         String
+  role         String   // SYSTEM_ADMIN|APP_MANAGER|EXEC_VIEWER|SALES_MGR|PLANNER|PROD_SUP|OPERATOR|STORE_MGR|QUALITY_MGR|CALIB_ENG|FINANCE_MGR|AUDITOR|API_USER
+  plant        String   @default("PLANT-PUNE")
+  active       Boolean  @default(true)
+  skillCodesJson String @default("[]") // DR-006 operator skill matrix — JSON string[] of skill codes
+  notifPrefsJson String @default("{}") // per-user notification preferences — JSON {mutedKinds:string[], minSeverity:ALL|WARNING|CRITICAL, digest:boolean}
+  createdAt    DateTime @default(now())
+  inspections  Inspection[]
+  notifications Notification[]
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String   @default("system")
+  action     String   // CREATE|UPDATE|SUBMIT|APPROVE|REJECT|CANCEL|SCAN|RELEASE|SEED|EINVOICE|BLOCK
+  entityType String
+  entityId   String
+  detail     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model DecisionRegister {
+  id        String   @id @default(cuid())
+  ref       String   @unique // DR-001
+  title     String
+  question  String
+  owner     String
+  dueDate   DateTime?
+  status    String   @default("OPEN") // OPEN|DECIDED|CLOSED
+  decision  String   @default("")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// MASTERS
+// ----------------------------------------------------------------------------
+
+model ProductFamily {
+  id             String @id @default(cuid())
+  code           String @unique // NOX|LAMBDA|DELTAP|EGT|UQS
+  name           String
+  description    String @default("")
+  evidenceClassesJson String @default("[]") // mandatory evidence classes (from spec)
+  routeBaselineJson   String @default("[]") // configurable baseline route steps
+}
+
+model Item {
+  id          String  @id @default(cuid())
+  partNumber  String  @unique // TAU-NOX-100, RM-CERAMIC-ELEMENT...
+  name        String
+  familyCode  String  @default("") // for FG/subassembly
+  itemType    String  // RAW|SUBASSEMBLY|FINISHED|CONSUMABLE|PACKAGING
+  uom         String  @default("Nos")
+  trackingType String @default("NONE") // SERIAL|BATCH|NONE
+  criticality String  @default("STANDARD") // CRITICAL|STANDARD
+  hsnCode     String  @default("85371000") // synthetic, TBD—CA approval
+  gstRate     Float   @default(18) // synthetic, TBD—CA approval
+  procLeadTimeDays Int? // per-item procurement lead time (days) — data-driven PO ETA (round 10)
+  unitCost    Float   @default(0)
+  revision    String  @default("A")
+  lifecycle   String  @default("ACTIVE") // ACTIVE|PROTOTYPE|OBSOLETE
+  createdAt   DateTime @default(now())
+  bomLines     BomLine[]
+  boms         Bom[]
+  rfqs         Rfq[]
+  poLines      PoLine[]
+  forecasts    Forecast[]
+  workOrders   WorkOrder[]
+  quoteLines   QuoteLine[]
+  soLines      SoLine[]
+  deliveryLines DeliveryLine[]
+  stockLots    StockLot[]
+}
+
+model Warehouse {
+  id    String @id @default(cuid())
+  code  String @unique // WH-RAW, WH-IQC, WH-QUAR, WH-ACC, WH-REJ, WH-WIP, WH-FG, WH-SCRAP, WH-SUBCON, WH-REWORK
+  name  String
+  type  String // RAW|IQC|QUARANTINE|ACCEPTED|REJECTED|WIP|FG|SCRAP|SUBCONTRACT|REWORK
+}
+
+model Workstation {
+  id           String  @id @default(cuid())
+  code         String  @unique // WS-ASSY-01, WS-CAL-01...
+  name         String
+  kind         String  // ASSEMBLY|TEST|CALIBRATION|EOL|PACKING|IQC
+  qualifiedForJson String @default("[]") // family codes this station is qualified for
+  active       Boolean @default(true)
+}
+
+model Operation {
+  id          String @id @default(cuid())
+  code        String @unique // OP-IQC, OP-SUBASSY, OP-CALIB, OP-EOL...
+  name        String
+  description String @default("")
+  evidenceClass String @default("") // required evidence when executed
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  gstin        String   @default("") // synthetic
+  city         String   @default("")
+  category     String   @default("STANDARD") // CRITICAL|STANDARD
+  approved     Boolean  @default(false)
+  approvedDate DateTime?
+  rating       Float    @default(3.0) // 0-5 scorecard
+  ppm          Float    @default(0) // defect PPM
+  onTimePct    Float    @default(95)
+  notes        String   @default("")
+  quotations   SupplierQuotation[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Customer {
+  id         String @id @default(cuid())
+  code       String @unique
+  name       String
+  gstin      String @default("") // synthetic
+  city       String @default("")
+  segment    String @default("OEM") // OEM|TIER1|AFTERMARKET
+  programme  String @default("")
+}
+
+model Equipment {
+  id           String   @id @default(cuid())
+  code         String   @unique // EOL-BENCH-01, CAL-RIG-01, G-PRESS-01
+  name         String
+  kind         String   // TEST_BENCH|CAL_RIG|GAUGE
+  stationCode  String   @default("") // linked workstation
+  calibrationDue DateTime?
+  status       String   @default("OK") // OK|DUE_SOON|EXPIRED|MAINTENANCE
+}
+
+// ----------------------------------------------------------------------------
+// ENGINEERING — BOM, ROUTES, APQP/PPAP, ECO
+// ----------------------------------------------------------------------------
+
+model Bom {
+  id           String   @id @default(cuid())
+  itemId       String
+  revision     String   @default("A")
+  status       String   @default("DRAFT") // DRAFT|RELEASED|OBSOLETE
+  effectiveFrom DateTime?
+  releasedBy   String   @default("")
+  releasedAt   DateTime?
+  notes        String   @default("")
+  item         Item     @relation(fields: [itemId], references: [id])
+  lines        BomLine[]
+  workOrders   WorkOrder[]
+
+  @@unique([itemId, revision])
+}
+
+model BomLine {
+  id              String @id @default(cuid())
+  bomId           String
+  componentItemId String
+  qty             Float
+  scrapPct        Float  @default(0)
+  position        String @default("")
+  bom             Bom     @relation(fields: [bomId], references: [id])
+  componentItem   Item    @relation(fields: [componentItemId], references: [id])
+}
+
+model RouteRevision {
+  id            String   @id @default(cuid())
+  familyCode    String   // route owned by family; pilot items reference it
+  name          String
+  revision      String   @default("A")
+  status        String   @default("DRAFT") // DRAFT|RELEASED|OBSOLETE
+  effectiveFrom DateTime?
+  releasedBy    String   @default("")
+  releasedAt    DateTime?
+  notes         String   @default("")
+  workOrders    WorkOrder[]
+  steps         RouteStep[]
+
+  @@unique([familyCode, revision])
+}
+
+model RouteStep {
+  id             String  @id @default(cuid())
+  routeId        String
+  seq            Int
+  operationCode  String
+  workstationKind String  // required workstation kind
+  mandatory      Boolean @default(true)
+  evidenceClass  String  @default("")
+  description    String  @default("")
+  skillRequired  String  @default("") // operator skill matrix requirement
+  inspectionTemplateCode String @default("") // auto-inspection at this step
+  route          RouteRevision @relation(fields: [routeId], references: [id])
+  jobCards       JobCard[]
+}
+
+model EngineeringChange {
+  id           String   @id @default(cuid())
+  number       String   @unique // ECR-2025-001 / ECO-2025-001
+  kind         String   // ECR|ECO
+  title        String
+  reason       String   @default("")
+  status       String   @default("DRAFT") // DRAFT|TRIAGE|IMPACT_REVIEW|APPROVED|IMPLEMENTED|CLOSED|REJECTED
+  impactJson   String   @default("{}") // open PO / stock / WIP / customers analysis
+  effectivity  String   @default("NEXT_WO") // NEXT_WO|DATE|SERIAL_BREAK
+  effectivityDate DateTime?
+  requestedBy  String   @default("")
+  approvedBy   String   @default("")
+  createdAt    DateTime @default(now())
+}
+
+model ApqpProject {
+  id         String   @id @default(cuid())
+  number     String   @unique // APQP-2025-001
+  itemId     String
+  customerId String
+  title      String
+  status     String   @default("PLANNING") // PLANNING|IN_PROGRESS|PPAP_PENDING|APPROVED|CLOSED
+  startDate  DateTime?
+  targetDate DateTime?
+  gates      ApqpGate[]
+  ppap       PpapSubmission[]
+}
+
+model ApqpGate {
+  id          String    @id @default(cuid())
+  projectId   String
+  seq         Int
+  name        String    // Gate 1 Plan & Define ... Gate 5 Launch
+  deliverables String   @default("")
+  status      String    @default("PENDING") // PENDING|IN_PROGRESS|APPROVED|BLOCKED
+  plannedDate DateTime?
+  actualDate  DateTime?
+  evidence    String    @default("")
+  project     ApqpProject @relation(fields: [projectId], references: [id])
+}
+
+model PpapSubmission {
+  id           String   @id @default(cuid())
+  number       String   @unique // PPAP-2025-001
+  projectId    String
+  level        Int      @default(3) // PPAP levels 1-5
+  status       String   @default("PREPARING") // PREPARING|SUBMITTED|INTERIM|APPROVED|REJECTED
+  pswNumber    String   @default("")
+  evidenceJson String   @default("[]") // 18-element evidence register (codes + status)
+  submittedAt  DateTime?
+  disposition  String   @default("")
+  project      ApqpProject @relation(fields: [projectId], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// PROCUREMENT
+// ----------------------------------------------------------------------------
+
+model Rfq {
+  id         String   @id @default(cuid())
+  number     String   @unique
+  itemId     String
+  qty        Float
+  dueDate    DateTime?
+  status     String   @default("OPEN") // OPEN|QUOTED|AWARDED|CLOSED
+  item       Item     @relation(fields: [itemId], references: [id])
+  quotations SupplierQuotation[]
+}
+
+model SupplierQuotation {
+  id           String  @id @default(cuid())
+  rfqId        String
+  supplierId   String
+  unitPrice    Float
+  leadTimeDays Int
+  moq          Float   @default(0)
+  selected     Boolean @default(false)
+  status       String  @default("RECEIVED") // RECEIVED|SELECTED|REJECTED
+  rfq          Rfq     @relation(fields: [rfqId], references: [id])
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model PurchaseOrder {
+  id           String   @id @default(cuid())
+  poNumber     String   @unique
+  supplierId   String
+  status       String   @default("DRAFT") // DRAFT|PENDING_APPROVAL|APPROVED|PARTIAL|RECEIVED|CLOSED|CANCELLED
+  orderDate    DateTime @default(now())
+  expectedDate DateTime?
+  totalAmount  Float    @default(0)
+  currency     String   @default("INR")
+  approvedBy   String   @default("")
+  receipts     GoodsReceipt[]
+  lines        PoLine[]
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model PoLine {
+  id          String @id @default(cuid())
+  poId        String
+  itemId      String
+  qty         Float
+  receivedQty Float  @default(0)
+  unitPrice   Float
+  gstRate     Float  @default(18)
+  po          PurchaseOrder @relation(fields: [poId], references: [id])
+  item        Item   @relation(fields: [itemId], references: [id])
+}
+
+model GoodsReceipt {
+  id         String   @id @default(cuid())
+  grnNumber  String   @unique
+  poId       String?
+  supplierId String
+  receivedBy String
+  receivedAt DateTime @default(now())
+  status     String   @default("DRAFT") // DRAFT|SUBMITTED|IQC_PENDING|IQC_DONE
+  remarks    String   @default("")
+  po         PurchaseOrder? @relation(fields: [poId], references: [id])
+  lines      GrnLine[]
+}
+
+model GrnLine {
+  id              String  @id @default(cuid())
+  grnId           String
+  poLineId        String?
+  itemId          String
+  qty             Float
+  supplierBatch   String  @default("")
+  manufacturerRef String  @default("")
+  disposition     String  @default("PENDING_IQC") // PENDING_IQC|ACCEPTED|REJECTED|HOLD
+  grn             GoodsReceipt @relation(fields: [grnId], references: [id])
+  inspections     Inspection[]
+}
+
+// ----------------------------------------------------------------------------
+// INVENTORY & GENEALOGY
+// ----------------------------------------------------------------------------
+
+model StockLot {
+  id            String   @id @default(cuid())
+  lotNumber     String   @unique // serial for SERIAL type, batch id for BATCH
+  itemId        String
+  trackingType  String   // SERIAL|BATCH
+  status        String   @default("IN_STOCK") // IN_STOCK|CONSUMED|HELD|REJECTED|SHIPPED|SCRAPPED|WIP
+  warehouseCode String   @default("WH-QUAR")
+  qty           Float    @default(1)
+  supplierBatch String   @default("")
+  grnLineId     String?  @default("")
+  woNumber      String   @default("") // produced by WO (for FG/subassembly lots)
+  expiryDate    DateTime?
+  createdAt     DateTime @default(now())
+  item          Item     @relation(fields: [itemId], references: [id])
+  movements     StockMovement[]
+  genealogyParent GenealogyLink[] @relation("parent")
+  genealogyChild  GenealogyLink[] @relation("child")
+  containerMembers ContainerMember[]
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  lotId       String
+  type        String   // RECEIPT|IQC_ACCEPT|IQC_REJECT|PUTAWAY|TRANSFER|ISSUE_TO_WO|CONSUME|FG_RECEIPT|SHIP|ADJUST|SCRAP|RETURN
+  qty         Float    @default(1)
+  fromWh      String   @default("")
+  toWh        String   @default("")
+  refType     String   @default("") // GRN|WO|JOB|DN|NCR|MRB
+  refId       String   @default("")
+  userId      String   @default("")
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+  lot         StockLot @relation(fields: [lotId], references: [id])
+}
+
+model GenealogyLink {
+  id          String   @id @default(cuid())
+  parentLotId String   // finished/subassembly serial
+  childLotId  String   // consumed component lot
+  woNumber    String   @default("")
+  operationCode String @default("")
+  quantity    Float    @default(1)
+  createdAt   DateTime @default(now())
+  parentLot   StockLot @relation("parent", fields: [parentLotId], references: [id])
+  childLot    StockLot @relation("child", fields: [childLotId], references: [id])
+
+  @@index([parentLotId])
+  @@index([childLotId])
+}
+
+model Container {
+  id            String  @id @default(cuid())
+  containerNumber String @unique // CTN-...
+  kind          String  @default("BOX") // BOX|PALLET
+  status        String  @default("OPEN") // OPEN|SEALED|DISPATCHED|EMPTY
+  dnNumber      String  @default("")
+  members       ContainerMember[]
+}
+
+model ContainerMember {
+  id          String @id @default(cuid())
+  containerId String
+  lotId       String
+  container   Container @relation(fields: [containerId], references: [id])
+  lot         StockLot  @relation(fields: [lotId], references: [id])
+
+  @@unique([containerId, lotId])
+}
+
+// ----------------------------------------------------------------------------
+// PLANNING
+// ----------------------------------------------------------------------------
+
+model Forecast {
+  id         String @id @default(cuid())
+  familyCode String
+  itemId     String
+  period     String // YYYY-MM
+  qty        Float
+  source     String @default("APPROVED_FORECAST")
+  item       Item   @relation(fields: [itemId], references: [id])
+}
+
+model MrpRun {
+  id          String   @id @default(cuid())
+  number      String   @unique
+  ranAt       DateTime @default(now())
+  ranBy       String   @default("")
+  paramsJson  String   @default("{}") // horizonWeeks, frozenWeeks...
+  summaryJson String   @default("{}") // per-item gross/net/shortage
+  exceptionsJson String @default("[]") // shortage, capacity, alternates
+  suggestionCount Int  @default(0)
+}
+
+// ----------------------------------------------------------------------------
+// PRODUCTION
+// ----------------------------------------------------------------------------
+
+model WorkOrder {
+  id              String   @id @default(cuid())
+  woNumber        String   @unique
+  itemId          String
+  familyCode      String
+  bomId           String?
+  routeId         String?
+  bomRevision     String   @default("")
+  routeRevision   String   @default("")
+  qtyPlanned      Float
+  qtyCompleted    Float    @default(0)
+  qtyScrapped     Float    @default(0)
+  status          String   @default("CREATED") // CREATED|RELEASED|IN_PROGRESS|COMPLETED|CLOSED|CANCELLED
+  priority        String   @default("NORMAL") // LOW|NORMAL|HIGH|CRITICAL
+  soNumber        String   @default("")
+  dueDate         DateTime?
+  plannedStart    DateTime?
+  releasedBy      String   @default("")
+  releasedAt      DateTime?
+  closedAt        DateTime?
+  item            Item     @relation(fields: [itemId], references: [id])
+  bom             Bom?     @relation(fields: [bomId], references: [id])
+  route           RouteRevision? @relation(fields: [routeId], references: [id])
+  jobCards        JobCard[]
+  travellerEvents TravellerEvent[]
+}
+
+model JobCard {
+  id            String   @id @default(cuid())
+  woId          String
+  stepId        String
+  operationCode String
+  workstationCode String @default("")
+  status        String   @default("PENDING") // PENDING|READY|IN_PROGRESS|PAUSED|COMPLETED|BLOCKED
+  operatorId    String?
+  qtyGood       Float    @default(0)
+  qtyScrap      Float    @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  sequence      Int      @default(0)
+  evidence      String   @default("")
+  wo            WorkOrder @relation(fields: [woId], references: [id])
+  step          RouteStep @relation(fields: [stepId], references: [id])
+}
+
+model TravellerEvent {
+  id        String   @id @default(cuid())
+  woId      String
+  kind      String   // CREATED|RELEASED|ISSUE|SCAN|OP_START|OP_PAUSE|OP_RESUME|OP_COMPLETE|BIND|FG_RECEIPT|QUALITY|RELEASE|BLOCK
+  message   String
+  payloadJson String @default("{}")
+  userName  String   @default("")
+  createdAt DateTime @default(now())
+  wo        WorkOrder @relation(fields: [woId], references: [id])
+}
+
+model ScanSession {
+  id        String   @id @default(cuid())
+  woNumber  String   @default("")
+  kind      String   // ISSUE_TO_WO|BIND_COMPONENT|FG_RECEIPT|PACK
+  status    String   @default("OPEN") // OPEN|COMMITTED|FAILED
+  scansJson String   @default("[]")
+  userName  String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// QUALITY
+// ----------------------------------------------------------------------------
+
+model InspectionTemplate {
+  id         String @id @default(cuid())
+  code       String @unique // IQC-CERAMIC, CAL-NOX, EOL-NOX...
+  name       String
+  familyCode String @default("")
+  kind       String // IQC|INPROCESS|CALIBRATION|EOL|FINAL
+  paramsJson String @default("[]") // [{name,unit,lower,upper,kind}]
+}
+
+model Inspection {
+  id           String   @id @default(cuid())
+  inspNumber   String   @unique
+  kind         String   // IQC|INPROCESS|CALIBRATION|EOL|FINAL
+  templateCode String   @default("")
+  refType      String   @default("") // GRN_LINE|JOB_CARD|LOT|WORK_ORDER
+  refId        String   @default("")
+  lotNumber    String   @default("")
+  woNumber     String   @default("")
+  equipmentCode String  @default("")
+  attempt      Int      @default(1)
+  retestReason String   @default("")
+  status       String   @default("PENDING") // PENDING|PASSED|FAILED|HOLD
+  resultsJson  String   @default("[]") // [{parameter,unit,value,lower,upper,pass}]
+  overallResult String  @default("") // PASS|FAIL
+  inspectorId  String?
+  approvedBy   String   @default("")
+  submittedAt  DateTime?
+  grnLineId    String?
+  immutable    Boolean  @default(false) // set true once submitted
+  operatorId   User?    @relation(fields: [inspectorId], references: [id])
+  grnLine      GrnLine? @relation(fields: [grnLineId], references: [id])
+}
+
+model Ncr {
+  id          String   @id @default(cuid())
+  ncrNumber   String   @unique
+  inspectionId String? @default("")
+  sourceRef   String   @default("") // description of origin
+  lotNumber   String   @default("")
+  woNumber    String   @default("")
+  severity    String   @default("MAJOR") // MINOR|MAJOR|CRITICAL
+  description String
+  containmentJson String @default("[]") // affected lots/WIP/customers
+  status      String   @default("OPEN") // OPEN|CONTAINMENT|MRB|DISPOSITIONED|CLOSED
+  raisedBy    String   @default("")
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+  mrb         MrbDecision[]
+  capas       Capa[]
+}
+
+model MrbDecision {
+  id          String  @id @default(cuid())
+  ncrId       String
+  disposition String  // USE_AS_IS|REWORK|REPAIR|RETURN_TO_VENDOR|SCRAP
+  justification String @default("")
+  decidedBy   String  @default("")
+  approvedBy  String  @default("") // four-eyes: must differ from decidedBy
+  stockAction String  @default("") // warehouse move applied
+  createdAt   DateTime @default(now())
+  ncr         Ncr     @relation(fields: [ncrId], references: [id])
+}
+
+model Capa {
+  id          String   @id @default(cuid())
+  capaNumber  String   @unique
+  ncrId       String?
+  kind        String   @default("CORRECTIVE") // CORRECTIVE|PREVENTIVE
+  problem     String
+  rootCause   String   @default("")
+  actionsJson String   @default("[]") // [{action,owner,dueDate,done}]
+  owner       String   @default("")
+  dueDate     DateTime?
+  status      String   @default("OPEN") // OPEN|ACTIONS_PENDING|VERIFICATION|CLOSED
+  effectiveness String @default("") // verified result
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+  ncr         Ncr?     @relation(fields: [ncrId], references: [id])
+}
+
+model ReworkOrder {
+  id           String  @id @default(cuid())
+  rwNumber     String  @unique
+  ncrId        String? @default("")
+  woNumber     String  @default("")
+  targetLotNumber String @default("")
+  instructions String
+  authorizedBy String  @default("")
+  status       String  @default("OPEN") // OPEN|IN_PROGRESS|DONE|CANCELLED
+  outcome      String  @default("")
+  createdAt    DateTime @default(now())
+}
+
+model ProductRelease {
+  id            String   @id @default(cuid())
+  releaseNumber String   @unique
+  lotNumber     String   // finished serial
+  woNumber      String
+  checksJson    String   @default("{}") // genealogyComplete, iqOk, calOk, eolOk, finalOk
+  status        String   @default("PENDING") // PENDING|RELEASED|BLOCKED
+  blockersJson  String   @default("[]")
+  releasedBy    String   @default("")
+  approvedBy    String   @default("")
+  releasedAt    DateTime?
+  createdAt     DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// SALES & COMPLIANCE
+// ----------------------------------------------------------------------------
+
+model Quotation {
+  id         String   @id @default(cuid())
+  quoteNumber String  @unique
+  customerId String
+  status     String   @default("DRAFT") // DRAFT|SENT|ACCEPTED|REJECTED|EXPIRED|CONVERTED
+  validUntil DateTime?
+  totalAmount Float   @default(0)
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  lines      QuoteLine[]
+}
+
+model QuoteLine {
+  id          String @id @default(cuid())
+  quotationId String
+  itemId      String
+  qty         Float
+  unitPrice   Float
+  quotation   Quotation @relation(fields: [quotationId], references: [id])
+  item        Item      @relation(fields: [itemId], references: [id])
+}
+
+model SalesOrder {
+  id          String   @id @default(cuid())
+  soNumber    String   @unique
+  customerId  String
+  status      String   @default("CONFIRMED") // DRAFT|CONFIRMED|IN_PRODUCTION|READY|PARTIAL|DISPATCHED|CLOSED|CANCELLED
+  orderDate   DateTime @default(now())
+  totalAmount Float    @default(0)
+  programme   String   @default("")
+  lines       SoLine[]
+}
+
+model SoLine {
+  id           String  @id @default(cuid())
+  soId         String
+  itemId       String
+  qty          Float
+  unitPrice    Float
+  gstRate      Float   @default(18)
+  deliveredQty Float   @default(0)
+  so           SalesOrder @relation(fields: [soId], references: [id])
+  item         Item       @relation(fields: [itemId], references: [id])
+}
+
+model DeliveryNote {
+  id         String   @id @default(cuid())
+  dnNumber   String   @unique
+  soId       String
+  status     String   @default("DRAFT") // DRAFT|PICKED|DISPATCHED|CANCELLED
+  vehicleNo  String   @default("")
+  ewayBillNo String   @default("") // synthetic
+  dispatchedAt DateTime?
+  lines      DeliveryLine[]
+}
+
+model DeliveryLine {
+  id        String @id @default(cuid())
+  dnId      String
+  itemId    String
+  lotNumber String
+  qty       Float
+  dn        DeliveryNote @relation(fields: [dnId], references: [id])
+  item      Item         @relation(fields: [itemId], references: [id])
+}
+
+model SalesInvoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  dnId          String
+  soId          String
+  customerId    String
+  taxableValue  Float    @default(0)
+  cgst          Float    @default(0)
+  sgst          Float    @default(0)
+  igst          Float    @default(0)
+  total         Float    @default(0)
+  placeOfSupply String   @default("MH")
+  status        String   @default("DRAFT") // DRAFT|ISSUED|EINVOICE_PENDING|EINVOICED|CANCELLED
+  irn           String   @default("")
+  irnAt         DateTime?
+  qrPayloadJson String   @default("{}")
+  synthetic     Boolean  @default(true) // ALWAYS true in this environment
+  createdAt     DateTime @default(now())
+}
+
+model EInvoiceLog {
+  id             String   @id @default(cuid())
+  invoiceNumber  String
+  idempotencyKey String   @unique
+  correlationId  String   @default("")
+  mode           String   @default("SANDBOX_MOCK") // SANDBOX_MOCK|LIVE (live forbidden here)
+  requestJson    String   @default("{}")
+  responseJson   String   @default("{}")
+  status         String   @default("PENDING") // PENDING|SUCCESS|FAILED|RETRY|CANCELLED
+  attempts       Int      @default(0)
+  errorMessage   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+// SUPPLIER QUALITY — SCAR (Supplier Corrective Action Request)
+// Auto-raised on IQC FAIL (rejected GRN) or raised manually by Quality;
+// closed with four-eyes (closer ≠ raiser). Audited end-to-end.
+// ----------------------------------------------------------------------------
+
+model Scar {
+  id                String    @id @default(cuid())
+  scarNumber        String    @unique // SCAR-YYYY-NNNN
+  supplierId        String
+  grnNumber         String    @default("") // originating goods receipt ("" for manual)
+  inspectionRef     String    @default("") // originating IQC inspection number
+  lotNumbersJson    String    @default("[]") // [string] affected lot numbers
+  partSummary       String    @default("") // "partNumber × qty" human summary
+  defectDescription String
+  severity          String    @default("MAJOR") // MINOR|MAJOR|CRITICAL
+  containment       String    @default("") // buyer-side containment actions
+  responseDue       DateTime? // supplier 8D-style response due
+  supplierResponse  String    @default("") // supplier root cause + corrective action + prevention
+  respondedAt       DateTime?
+  status            String    @default("OPEN") // OPEN|UNDER_REVIEW|VERIFICATION|CLOSED|CANCELLED
+  raisedBy          String
+  evidenceJson      String    @default("[]") // [{name,size,kind,uploadedBy,uploadedAt}] — metadata-only effectiveness evidence (round 10)
+  closedBy          String    @default("")
+  closedAt          DateTime?
+  createdAt         DateTime  @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// NOTIFICATIONS
+// ----------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  role      String   @default("") // broadcast to role when userId null
+  kind      String   // APPROVAL|QUALITY|STOCK|CALIB|MAINT|INTEGRATION|INFO
+  severity  String   @default("INFO") // INFO|WARNING|CRITICAL
+  title     String
+  message   String
+  refType   String   @default("")
+  refId     String   @default("")
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+// ----------------------------------------------------------------------------
+// SHOP-FLOOR SHIFT HANDOVER (production communication log)
+// ----------------------------------------------------------------------------
+
+model ShiftHandover {
+  id             String    @id @default(cuid())
+  shiftDate      DateTime // calendar date the shift started (IST)
+  shift          String    @default("A") // A=MORNING|B=AFTERNOON|C=NIGHT (constants)
+  area           String    @default("") // line / workstation focus, e.g. LINE-NOX
+  woNumber       String    @default("") // optional focus work order
+  authorName     String // username of the outgoing supervisor
+  headcount      Int       @default(0) // operators present on the shift
+  summary        String    @default("") // what happened during the shift
+  issuesJson     String    @default("[]") // [{issue, severity: LOW|MEDIUM|HIGH}]
+  carryOverJson  String    @default("[]") // [string] tasks carried into next shift
+  safetyNote     String    @default("")
+  status         String    @default("OPEN") // OPEN|ACKNOWLEDGED
+  acknowledgedBy String    @default("") // four-eyes: must differ from authorName
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+}

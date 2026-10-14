@@ -178,7 +178,7 @@ export default function ProductTour() {
             left: rect.left - PAD,
             width: rect.width + PAD * 2,
             height: rect.height + PAD * 2,
-            boxShadow: "0 0 0 4px rgba(147,203,115,0.25), 0 0 24px rgba(147,203,115,0.35), 0 0 0 9999px rgba(10,12,14,0.66)",
+            boxShadow: "0 0 0 9999px rgba(10,12,14,0.66)",
           }}
         />
       )}

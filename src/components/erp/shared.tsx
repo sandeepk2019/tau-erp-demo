@@ -224,7 +224,6 @@ export function StatCard({
       )}
       onClick={onClick}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -235,7 +234,7 @@ export function StatCard({
             {sub && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
           </div>
           {Icon && (
-            <div className="rounded-md bg-primary/10 p-2 shrink-0 transition-all duration-200 group-hover:bg-primary/20 group-hover:shadow-[0_0_14px_rgba(245,158,11,0.25)]">
+            <div className="rounded-md bg-primary/10 p-2 shrink-0 transition-colors duration-200 group-hover:bg-primary/20">
               <Icon className="h-4 w-4 text-primary" />
             </div>
           )}

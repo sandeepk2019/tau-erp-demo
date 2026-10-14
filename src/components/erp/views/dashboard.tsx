@@ -61,8 +61,8 @@ function RadarTile({
     <button
       onClick={onClick}
       className={`group relative overflow-hidden rounded-lg border bg-background/40 p-3 text-left transition-all duration-200 hover:-translate-y-px ${
-        tone === "red" ? "border-red-500/40 hover:border-red-500/70 hover:shadow-[0_0_18px_-4px] hover:shadow-red-500/30"
-        : tone === "amber" ? "border-amber-500/40 hover:border-amber-500/70 hover:shadow-[0_0_18px_-4px] hover:shadow-amber-500/30"
+        tone === "red" ? "border-red-500/40 hover:border-red-500/70"
+        : tone === "amber" ? "border-amber-500/40 hover:border-amber-500/70"
         : "border-emerald-500/25 hover:border-emerald-500/50"
       }`}
     >

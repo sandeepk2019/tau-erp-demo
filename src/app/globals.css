@@ -207,20 +207,13 @@
   }
 }
 
-/* ------- Skeleton shimmer (round-8) — sweeping highlight, honours reduced motion ------- */
+/* ------- Skeleton placeholder — flat gentle pulse (no sweeping highlight) ------- */
 @keyframes erp-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 .erp-shimmer {
-  background-image: linear-gradient(
-    100deg,
-    #2b31368c 35%,
-    #3a4046bf 50%,
-    #2b31368c 65%
-  );
-  background-size: 200% 100%;
-  animation: erp-shimmer 1.6s ease-in-out infinite;
+  animation: erp-shimmer 1.8s ease-in-out infinite;
 }
 
 /* Respect users who prefer reduced motion: kill decorative transitions */

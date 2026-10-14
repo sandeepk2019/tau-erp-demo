@@ -95,9 +95,9 @@ export default function SupplierPortalDialog({ scar, onClose }: { scar: ScarRow;
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto erp-scroll bg-zinc-950 border-amber-500/25 shadow-[0_0_60px_-15px_rgba(245,158,11,0.25)]">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto erp-scroll bg-zinc-950 border-amber-500/25">
         {/* supplier-portal chrome — visually distinct from the buyer app */}
-        <div className="-mx-6 -mt-6 mb-4 border-b border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent px-6 py-4">
+        <div className="-mx-6 -mt-6 mb-4 border-b border-amber-500/25 bg-amber-500/5 px-6 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <Factory className="h-4 w-4 text-primary" />
             <p className="text-[13px] font-semibold tracking-wide">SUPPLIER PORTAL</p>

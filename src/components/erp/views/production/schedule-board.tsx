@@ -240,7 +240,7 @@ export default function ScheduleBoard({
                       <div
                         className={cn(
                           "absolute h-5 rounded-md overflow-hidden border bg-zinc-800/70 transition-all",
-                          isOverdue ? "border-red-400/70 shadow-[0_0_8px_rgba(239,68,68,0.25)]" : "border-border/70",
+                          isOverdue ? "border-red-400/70" : "border-border/70",
                           focused && "ring-1 ring-primary/60",
                         )}
                         style={{ left: offset * dayWidth + 2, width: len * dayWidth - 4, top: 10 }}
@@ -253,7 +253,7 @@ export default function ScheduleBoard({
                           </span>
                         </div>
                         {reasons.length > 0 && (
-                          <span className="absolute right-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.9)]" />
+                          <span className="absolute right-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-red-400" />
                         )}
                       </div>
                     </div>

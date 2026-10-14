@@ -123,7 +123,7 @@ sudo -u "$SERVICE_USER" -H bash -lc "
   export NODE_OPTIONS=--max-old-space-size=2048
   bun install --frozen-lockfile 2>/dev/null || bun install
   bunx prisma generate
-  bun run build
+  bun run build:standalone
   if [[ ! -f $INSTALL_DIR/db/custom.db ]]; then
     bunx prisma db push --accept-data-loss
     bun scripts/seed-runner.ts || true

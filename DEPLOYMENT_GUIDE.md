@@ -211,12 +211,14 @@ Repository already contains everything needed:
 
 ### Git-connected deployment (Workers Builds CI — recommended flow)
 
-If you connect the GitHub repo in the Cloudflare dashboard (**Workers & Pages → Create → Workers → Connect to Git**), Cloudflare clones and builds automatically. **The build and deploy commands are two separate dashboard settings and MUST match the deployment target:**
+If you connect the GitHub repo in the Cloudflare dashboard (**Workers & Pages → Create → Workers → Connect to Git**), Cloudflare clones and builds automatically. **The repo's `build` script detects nothing and needs no dashboard tuning:**
 
-| Dashboard setting (Worker → Settings → Build) | Correct value | Why |
+| Dashboard setting (Worker → Settings → Build) | Value | Why it just works |
 |---|---|---|
-| **Build command** | `bun run cf:build` | Runs `opennextjs-cloudflare build` → produces `.open-next/` (worker + assets). ⚠️ The default `bun run build` produces the Node *standalone* bundle — `wrangler deploy` then fails with *"Could not find compiled Open Next config"*. |
-| **Deploy command** | `npx wrangler deploy` | Auto-detects OpenNext and ships `.open-next/` + `wrangler.toml`. |
+| **Build command** | `bun run build` (auto-detected) | `build` = `opennextjs-cloudflare build` → produces `.open-next/` (worker + assets) that the deploy step requires. |
+| **Deploy command** | `npx wrangler deploy` (default) | Auto-detects OpenNext and ships `.open-next/` + `wrangler.toml`. |
+
+> ℹ️ Script roles: `build` → Cloudflare OpenNext worker · `build:standalone` → Node standalone bundle (used internally by `deploy/deploy.sh`, `deploy/update.sh` and the Docker image for VPS/Docker deployments). You never need to change the dashboard commands.
 
 **Prerequisites before the first successful deploy:**
 

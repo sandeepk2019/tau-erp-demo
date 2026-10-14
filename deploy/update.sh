@@ -41,7 +41,7 @@ sudo -u tau -H bash -lc "
   export NODE_OPTIONS=--max-old-space-size=2048
   bun install
   bunx prisma generate
-  bun run build
+  bun run build:standalone
 "
 
 step "Restarting service"

@@ -17,7 +17,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN bunx prisma generate && bun run build
+RUN bunx prisma generate && bun run build:standalone
 
 # ---------- Stage 3: runtime ----------
 FROM oven/bun:1-slim AS runner

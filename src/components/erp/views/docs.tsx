@@ -7,7 +7,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle, BookOpen, ChevronRight, Lightbulb, Info,
-  ListChecks, Printer, Users, X,
+  Printer, Users, X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -385,9 +385,6 @@ export default function DocsView() {
         {/* Chapter rail */}
         <aside className="lg:w-72 shrink-0" aria-label="Manual chapters">
           <div className="lg:sticky lg:top-[72px] rounded-lg border border-border/70 bg-card overflow-hidden">
-            <p className="px-3.5 pt-3 pb-2 text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-              <ListChecks className="h-3.5 w-3.5" /> Contents · {CHAPTERS.length} chapters
-            </p>
             <div className="max-h-[420px] lg:max-h-[calc(100vh-190px)] overflow-y-auto erp-scroll px-2 pb-2 space-y-0.5">
               {CHAPTERS.map((c) => (
                 <button

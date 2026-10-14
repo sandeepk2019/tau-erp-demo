@@ -11,7 +11,6 @@ import { api } from "@/lib/erp/api-client";
 import { COMPANY, SYNTHETIC_NOTICE } from "@/lib/erp/constants";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -142,8 +141,6 @@ function ErpShell() {
     }
   }, [route.view]);
 
-  const navLabel = NAV.find((n) => n.view === route.view || (n.view === "planning" && route.view === "admin"))?.label ?? route.view;
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* TOPBAR */}
@@ -163,7 +160,7 @@ function ErpShell() {
           </Sheet>
 
           <button onClick={() => navigate("dashboard")} className="flex items-center gap-2.5 group" aria-label="Tau ERP home" data-tour="tour-logo">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shadow-[0_0_18px_rgba(147,203,115,0.35)]">
+            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
               <Activity className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="hidden sm:block text-left">
@@ -193,16 +190,7 @@ function ErpShell() {
             <Search className="h-4 w-4" />
           </button>
 
-          <div className="hidden xl:flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="opacity-50">Tau ERP</span>
-            <span className="opacity-40">/</span>
-            <span className="text-foreground/80 font-medium">{navLabel}</span>
-          </div>
-
           <div className="ml-auto flex items-center gap-2">
-            <Badge variant="outline" className="hidden lg:inline-flex border-amber-500/40 bg-amber-500/10 text-amber-300 text-[10px]">
-              SYNTHETIC DATA
-            </Badge>
 
             {/* Interactive product tours */}
             <DropdownMenu>
@@ -346,7 +334,6 @@ function SidebarContent({ compact = false }: { compact?: boolean }) {
   const setSidebarOpen = useErpStore((s) => s.setSidebarOpen);
   return (
     <nav className="flex flex-col h-full py-3" aria-label="ERP modules" data-tour="tour-nav">
-      <div className="px-4 pb-2 text-[10px] uppercase tracking-widest text-muted-foreground">Modules</div>
       <div className="flex-1 space-y-0.5 px-2 erp-scroll overflow-y-auto">
         {NAV.map((n) => {
           const active = route.view === n.view || (n.view === "planning" && route.view === "admin");

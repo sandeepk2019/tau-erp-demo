@@ -209,7 +209,25 @@ Repository already contains everything needed:
 | `scripts/export-d1-dump.ts` | Dumps the seeded DB to `d1-seed.sql` for D1 import |
 | `bun run cf:build` / `cf:deploy` / `cf:seed` | One-command build / deploy / seed |
 
-### Steps
+### Git-connected deployment (Workers Builds CI — recommended flow)
+
+If you connect the GitHub repo in the Cloudflare dashboard (**Workers & Pages → Create → Workers → Connect to Git**), Cloudflare clones and builds automatically. **The build and deploy commands are two separate dashboard settings and MUST match the deployment target:**
+
+| Dashboard setting (Worker → Settings → Build) | Correct value | Why |
+|---|---|---|
+| **Build command** | `bun run cf:build` | Runs `opennextjs-cloudflare build` → produces `.open-next/` (worker + assets). ⚠️ The default `bun run build` produces the Node *standalone* bundle — `wrangler deploy` then fails with *"Could not find compiled Open Next config"*. |
+| **Deploy command** | `npx wrangler deploy` | Auto-detects OpenNext and ships `.open-next/` + `wrangler.toml`. |
+
+**Prerequisites before the first successful deploy:**
+
+1. **Create D1 and paste its id** — `npx wrangler d1 create tau-erp` (locally), then put the printed `database_id` into `wrangler.toml` (replace `REPLACE_WITH_YOUR_D1_DATABASE_ID`). Without it the deploy fails with an invalid-binding error.
+2. **Seed D1** — `bun run db:d1:dump && npx wrangler d1 execute tau-erp --remote --file=d1-seed.sql`
+3. **Set vars** — `npx wrangler secret put NEXTAUTH_SECRET`; set `[vars] NEXTAUTH_URL` in `wrangler.toml` to your final URL (e.g. `https://tau-erp.<subdomain>.workers.dev`).
+4. **Push → Retry deployment** in the dashboard. The Next.js/Turbopack build itself is already proven green on Cloudflare's infra (Next 16.1.3, 54 routes) — the adapter (`@opennextjs/cloudflare@1.20.11`) has native Turbopack handling.
+
+Every subsequent `git push` to `main` rebuilds and redeploys automatically.
+
+### Local deployment (alternative — no git CI)
 
 ```bash
 # 1. Authenticate (once)

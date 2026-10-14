@@ -1,0 +1,38 @@
+# ============================================================================
+# Tau ERP — Cloudflare Workers deployment configuration
+# Docs: see "Option C — Cloudflare Workers + D1" in DEPLOYMENT_GUIDE.md
+#
+# Quick flow:
+#   1. npx wrangler login
+#   2. npx wrangler d1 create tau-erp            → paste database_id below
+#   3. bun run db:d1:dump                        → d1-seed.sql (schema + demo data)
+#   4. npx wrangler d1 execute tau-erp --remote --file=d1-seed.sql
+#   5. bun run cf:build && bun run cf:deploy
+# ============================================================================
+
+name = "tau-erp"
+main = ".open-next/worker.js"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+
+# Static assets (Next.js .next/static) served from the edge
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Serverless SQLite database (Prisma driver adapter, binding used in src/lib/db.ts)
+[[d1_databases]]
+binding = "DB"
+database_name = "tau-erp"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# Public env vars — set NEXTAUTH_URL to your final URL (workers.dev or custom domain)
+[vars]
+NEXTAUTH_URL = "https://tau-erp.<your-subdomain>.workers.dev"
+NODE_ENV = "production"
+
+# Secrets (never commit): NEXTAUTH_SECRET
+#   npx wrangler secret put NEXTAUTH_SECRET
+
+[observability]
+enabled = true

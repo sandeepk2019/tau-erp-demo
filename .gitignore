@@ -65,3 +65,8 @@ server.log
 /dev.pid
 /qa-*.png
 /deploy/backups/
+
+# ---- cloudflare build artifacts (never commit) ----
+/.open-next/
+/.wrangler/
+/d1-seed.sql

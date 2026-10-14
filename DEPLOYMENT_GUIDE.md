@@ -195,6 +195,57 @@ docker compose -f deploy/docker-compose.yml up -d --build
 
 ---
 
+## Option C — Cloudflare Workers + D1 (fully serverless)
+
+> ⚠️ **Read first:** Cloudflare Workers has **no filesystem**, so the SQLite file database cannot be used there. This kit migrates the data layer to **Cloudflare D1** (Cloudflare's serverless SQLite — same engine, different storage). `src/lib/db.ts` auto-detects the runtime: **Workers → D1 binding, Node → local SQLite file. Local dev and VPS deployment are completely unaffected.**
+
+Repository already contains everything needed:
+
+| File | Purpose |
+|---|---|
+| `wrangler.toml` | Cloudflare config (Worker + D1 binding + assets) |
+| `open-next.config.ts` | OpenNext adapter config |
+| `src/lib/db.ts` | Runtime detection: D1 (Workers) / SQLite (Node) |
+| `scripts/export-d1-dump.ts` | Dumps the seeded DB to `d1-seed.sql` for D1 import |
+| `bun run cf:build` / `cf:deploy` / `cf:seed` | One-command build / deploy / seed |
+
+### Steps
+
+```bash
+# 1. Authenticate (once)
+npx wrangler login
+
+# 2. Create the D1 database (once) — copy the printed database_id into wrangler.toml
+npx wrangler d1 create tau-erp
+
+# 3. Export the seeded demo dataset and import it into D1 (once)
+bun run db:d1:dump                                              # → d1-seed.sql (54 tables, 453 rows)
+npx wrangler d1 execute tau-erp --remote --file=d1-seed.sql
+
+# 4. Set the auth secret (once)
+npx wrangler secret put NEXTAUTH_SECRET        # paste an openssl rand -base64 32 value
+
+# 5. Build & deploy (every release)
+bun run cf:build
+bun run cf:deploy
+```
+
+### Custom domain on Cloudflare
+
+Easiest of all three options: add your domain to Cloudflare (free plan), then Dashboard → **Workers & Pages → tau-erp → Settings → Domains & Routes → Add → Custom domain** → `erp.yourcompany.com`. SSL is automatic (Cloudflare universal certificate) — no Caddy, no certbot, no DNS juggling.
+
+Also update `wrangler.toml` → `[vars] NEXTAUTH_URL` to `https://erp.yourcompany.com` before deploying.
+
+### Option C notes & troubleshooting
+
+- **Next.js version support:** `@opennextjs/cloudflare` tracks Next.js releases closely, but Next 16 is very new — if `bun run cf:build` fails with an adapter compatibility error, check the adapter's [supported versions](https://opennext.js.org/cloudflare) and/or use Option A (VPS) meanwhile.
+- **Prisma on Workers** uses the WASM query-compiler via the D1 driver adapter (`@prisma/adapter-d1@6.19.2`, matching `@prisma/client@6.19.2` — keep both at the same version when upgrading).
+- **Re-seeding later:** re-run steps 3 (dump + execute). Wipe first with `npx wrangler d1 execute tau-erp --remote --command "DROP TABLE ..."` or create a fresh database.
+- **Local dev stays on SQLite** — no wrangler needed to develop.
+
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |
